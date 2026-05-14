@@ -115,26 +115,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Demo accounts */}
-          <div className="mt-5 p-3.5 bg-slate-800/40 rounded-xl border border-slate-700/40">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Demo accounts</p>
-            <div className="space-y-1">
-              {[
-                { label: 'Demo User', email: 'demo@cineai.com', pass: 'demo123' },
-                { label: 'Admin', email: 'admin@cineai.com', pass: 'admin123' },
-              ].map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  onClick={() => { setEmail(acc.email); setPassword(acc.pass) }}
-                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors text-xs text-slate-400 hover:text-white"
-                >
-                  <span className="font-medium text-slate-300">{acc.label}</span>
-                  <span className="text-slate-600"> · {acc.email}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-slate-500 text-sm mt-6">
