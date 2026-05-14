@@ -8,6 +8,8 @@ export const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
+      _hydrated: false,
+      setHydrated: () => set({ _hydrated: true }),
 
       login: async (email, password) => {
         const { data } = await api.post('/auth/login', { email, password })
@@ -41,6 +43,10 @@ export const useAuthStore = create(
         }
       },
     }),
-    { name: 'auth-store', partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }) }
+    {
+      name: 'auth-store',
+      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }),
+      onRehydrateStorage: () => (state) => { state?.setHydrated() },
+    }
   )
 )

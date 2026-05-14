@@ -28,9 +28,11 @@ function AppLayout({ children }) {
 
 export default function App() {
   const { init } = useThemeStore()
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, _hydrated } = useAuthStore()
 
   useEffect(() => { init() }, [])
+
+  if (!_hydrated) return null
 
   return (
     <Routes>
