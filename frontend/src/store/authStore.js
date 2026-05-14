@@ -2,14 +2,19 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api from '../api/client'
 
+// Read localStorage synchronously so the very first render has the correct
+// auth state — prevents the login↔home flash before Zustand hydrates.
+const _saved = (() => {
+  try { return JSON.parse(localStorage.getItem('auth-store') || '{}')?.state ?? {} }
+  catch { return {} }
+})()
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      _hydrated: false,
-      setHydrated: () => set({ _hydrated: true }),
+      user: _saved.user ?? null,
+      token: _saved.token ?? null,
+      isAuthenticated: _saved.isAuthenticated ?? false,
 
       login: async (email, password) => {
         const { data } = await api.post('/auth/login', { email, password })
@@ -43,10 +48,6 @@ export const useAuthStore = create(
         }
       },
     }),
-    {
-      name: 'auth-store',
-      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }),
-      onRehydrateStorage: () => (state) => { state?.setHydrated() },
-    }
+    { name: 'auth-store', partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }) }
   )
 )
