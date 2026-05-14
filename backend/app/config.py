@@ -17,7 +17,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
-        return json.loads(self.CORS_ORIGINS)
+        val = self.CORS_ORIGINS.strip()
+        if not val:
+            return ["http://localhost:5173", "http://localhost:3000"]
+        return json.loads(val)
 
     class Config:
         env_file = ".env"
