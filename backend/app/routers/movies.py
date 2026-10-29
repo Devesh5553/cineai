@@ -105,6 +105,18 @@ def get_genres(db: Session = Depends(get_db)):
     return sorted(list(genre_set))
 
 
+@router.post("/seed")
+def seed_database(db: Session = Depends(get_db)):
+    """Trigger manual database seeding (idempotent)."""
+    try:
+        from data.seed import seed
+        seed()
+        count = db.query(Movie).count()
+        return {"status": "ok", "message": f"Database seeded successfully. Total movies: {count}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Seed error: {str(e)}")
+
+
 @router.get("/{movie_id}")
 def get_movie(movie_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     movie = db.query(Movie).filter(Movie.id == movie_id).first()

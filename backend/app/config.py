@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./moviedb.sqlite"
 
     TMDB_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
 
     CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000"]'

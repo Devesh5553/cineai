@@ -180,9 +180,11 @@ def seed():
             db.add(demo)
             db.commit()
             db.refresh(demo)
-            sample_ratings = [(1, 5), (2, 5), (3, 4.5), (4, 5), (7, 4), (9, 4.5), (32, 4.5), (33, 4)]
-            for mid, rating_val in sample_ratings:
-                db.add(Rating(user_id=demo.id, movie_id=mid, rating=rating_val))
+            sample_tmdb_ratings = [(27205, 5.0), (157336, 5.0), (155, 4.5), (278, 5.0), (550, 4.0), (603, 4.5)]
+            for tmdb_id, rating_val in sample_tmdb_ratings:
+                m_obj = db.query(Movie).filter(Movie.tmdb_id == tmdb_id).first()
+                if m_obj:
+                    db.add(Rating(user_id=demo.id, movie_id=m_obj.id, rating=rating_val))
             db.commit()
             print("Created demo user with sample ratings")
 
@@ -194,8 +196,11 @@ def seed():
             for m in all_movies
         ]
         print(f"Training content-based model on {len(movies_list)} movies...")
-        content_recommender.fit(movies_list)
-        print("Content model trained and saved")
+        try:
+            content_recommender.fit(movies_list)
+            print("Content model trained and saved")
+        except Exception as e:
+            print(f"Content model training warning: {e}")
 
     finally:
         db.close()

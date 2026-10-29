@@ -228,7 +228,43 @@ async def chat(
 
     all_movies = db.query(Movie).order_by(Movie.rating.desc()).all()
 
-    if settings.ANTHROPIC_API_KEY and not settings.ANTHROPIC_API_KEY.startswith("your-"):
+    if settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("your-"):
+        try:
+            import google.generativeai as genai
+
+            user_context = _build_user_context(current_user, db)
+            movie_catalog = _build_movie_catalog(db)
+            already_seen = _already_recommended(body.history)
+            seen_note = (
+                f"\nAlready recommended in this conversation (DO NOT suggest these again): {', '.join(already_seen)}"
+                if already_seen else ""
+            )
+
+            system = (
+                SYSTEM_PROMPT
+                + f"\n\n--- USER PROFILE ---\n{user_context}"
+                + f"\n\n--- AVAILABLE MOVIES (pick from these) ---\n{movie_catalog}"
+                + seen_note
+            )
+
+            # Gemini uses "model" instead of "assistant" for role names
+            history = []
+            for msg in body.history[-8:]:
+                role = "model" if msg["role"] == "assistant" else "user"
+                history.append({"role": role, "parts": [msg["content"]]})
+
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                system_instruction=system,
+            )
+            chat = model.start_chat(history=history)
+            response = chat.send_message(body.message)
+            reply = response.text
+
+        except Exception:
+            reply = _fallback_response(body.message, all_movies, body.history)
+    elif settings.ANTHROPIC_API_KEY and not settings.ANTHROPIC_API_KEY.startswith("your-"):
         try:
             import anthropic
 
@@ -260,7 +296,6 @@ async def chat(
                 messages=messages,
             )
             reply = response.content[0].text
-
         except Exception:
             reply = _fallback_response(body.message, all_movies, body.history)
     else:
