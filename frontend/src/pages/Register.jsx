@@ -20,7 +20,7 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      await register(form.username, form.email, form.password)
+      await register(form.username.trim(), form.email.trim(), form.password)
       navigate('/onboarding')
     } catch (err) {
       setError(err.response?.data?.detail || 'Registration failed')

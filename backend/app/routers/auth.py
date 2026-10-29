@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 from pydantic import BaseModel, EmailStr
 from ..database import get_db
 from ..models.models import User
@@ -27,16 +28,19 @@ class TokenResponse(BaseModel):
 
 @router.post("/register", response_model=TokenResponse)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == body.email).first():
+    clean_email = str(body.email).strip().lower()
+    clean_username = body.username.strip()
+
+    if db.query(User).filter(func.lower(User.email) == clean_email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
-    if db.query(User).filter(User.username == body.username).first():
+    if db.query(User).filter(func.lower(User.username) == clean_username.lower()).first():
         raise HTTPException(status_code=400, detail="Username already taken")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     user = User(
-        username=body.username,
-        email=body.email,
+        username=clean_username,
+        email=clean_email,
         hashed_password=hash_password(body.password),
     )
     db.add(user)
@@ -52,7 +56,17 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == body.email).first()
+    identifier = body.email.strip().lower()
+    user = (
+        db.query(User)
+        .filter(
+            or_(
+                func.lower(User.email) == identifier,
+                func.lower(User.username) == identifier,
+            )
+        )
+        .first()
+    )
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 

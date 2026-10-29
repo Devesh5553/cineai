@@ -1,0 +1,227 @@
+================================================================
+  CineAI — AI-Powered Movie Recommendation System
+  Project Overview & Technical Breakdown
+================================================================
+
+WHAT IS IT?
+-----------
+CineAI is a full-stack web application that recommends movies to
+users based on their taste, ratings, and genre preferences. It
+includes an AI chatbot, a watchlist, user reviews with sentiment
+analysis, and a personalized "For You" page powered by machine
+learning.
+
+Live site: https://cineai-five.vercel.app
+
+
+----------------------------------------------------------------
+HIGH-LEVEL ARCHITECTURE
+----------------------------------------------------------------
+
+  [User's Browser]
+       |
+       v
+  [Frontend — React app hosted on Vercel]
+       |  (HTTP requests over the internet)
+       v
+  [Backend — FastAPI server running in Docker on Render]
+       |
+       +——> [Neon PostgreSQL Database]   (stores users, ratings, etc.)
+       +——> [TMDB API]                   (movie poster/backdrop images)
+       +——> [Anthropic Claude API]       (AI chatbot responses)
+
+
+----------------------------------------------------------------
+TECH STACK
+----------------------------------------------------------------
+
+FRONTEND
+  - React 18          — UI library (component-based)
+  - Vite              — build tool and dev server (very fast)
+  - React Router v6   — client-side navigation between pages
+  - Zustand           — lightweight global state management
+                        (stores auth token, user info, theme)
+  - Tailwind CSS      — utility-first CSS framework
+  - Framer Motion     — animations and page transitions
+  - Axios             — HTTP client for talking to the backend
+  - Lucide React      — icon library
+
+BACKEND
+  - Python 3.11
+  - FastAPI           — modern async web framework, auto-generates
+                        API docs at /docs
+  - SQLAlchemy        — ORM (maps Python classes to database tables)
+  - Pydantic          — data validation and schema definitions
+  - python-jose       — JWT token creation and verification
+  - bcrypt            — password hashing (never stores plain passwords)
+  - scikit-learn      — machine learning library (TF-IDF, cosine similarity)
+  - pandas / numpy    — data manipulation for ML models
+  - TextBlob          — sentiment analysis on user reviews
+  - Gemini     — connects to Gemini AI for the chatbot
+  - httpx             — async HTTP requests (TMDB API calls)
+
+DATABASE
+  - Neon PostgreSQL   — serverless cloud PostgreSQL, free tier,
+                        persists data independently of the server
+
+INFRASTRUCTURE
+  - Docker            — packages the backend + dependencies into
+                        a container so it runs the same everywhere
+  - Render            — hosts the Docker container (backend)
+  - Vercel            — hosts the React build (frontend), CDN-distributed
+  - GitHub            — source control, triggers auto-deploys on push
+
+
+----------------------------------------------------------------
+HOW THE KEY FEATURES WORK TECHNICALLY
+----------------------------------------------------------------
+
+1. AUTHENTICATION
+   - User registers → password is hashed with bcrypt → stored in DB
+   - On login → backend verifies password hash → generates a JWT
+     (JSON Web Token) signed with a secret key, valid for 7 days
+   - Frontend stores the JWT in localStorage via Zustand
+   - Every API request sends the token in the Authorization header:
+     "Authorization: Bearer <token>"
+   - Backend middleware decodes the token to identify the user
+
+2. MOVIE DATA
+   - 106 movies are pre-seeded into the database via a seed.py script
+     that runs automatically on every deployment
+   - Each movie has: title, overview, genres, cast, director, keywords,
+     rating, poster URL, backdrop URL, trailer URL, runtime, language
+   - Poster and backdrop images are served directly from TMDB's CDN
+     (The Movie Database API) — we just store the URL, not the image
+
+3. RECOMMENDATION ENGINE (the ML part)
+   Three algorithms work together in a hybrid system:
+
+   a) Content-Based Filtering
+      - Builds a "feature string" for each movie combining its genres,
+        cast, director, keywords, and overview
+      - Converts all feature strings into TF-IDF vectors
+        (TF-IDF = Term Frequency-Inverse Document Frequency — a way
+        to represent text as numbers that captures how important each
+        word is)
+      - When you want movies similar to Movie X, it computes cosine
+        similarity between Movie X's vector and every other movie's
+        vector, returns the closest matches
+      - This is what powers the "Similar Movies" section on each
+        movie detail page
+
+   b) Collaborative Filtering
+      - Builds a user-movie rating matrix (rows = users, cols = movies)
+      - Uses SVD (Singular Value Decomposition) to find hidden patterns
+        in how users rate movies — if you and another user both loved
+        the same 5 movies, it predicts you'll like what they liked
+      - Requires enough rating data to work well (gets better over time)
+
+   c) Hybrid Recommender (used for "For You" page)
+      - Combines both approaches with weighted scoring
+      - Also factors in your genre preferences set during onboarding
+      - Returns a confidence score and plain-English reason for each
+        recommendation ("Because you liked Drama films")
+
+4. AI CHATBOT
+   - Built using the Gemini AI 
+   - When you send a message, the backend sends it to gemini along
+     with a system prompt that tells it to act as a movie expert
+   - Gemini generates a response and streams it back
+   - The chatbot knows about movies in the database and can answer
+     questions like "what should I watch tonight?" or "tell me about
+     Inception"
+
+5. USER REVIEWS + SENTIMENT ANALYSIS
+   - When a user writes a review, TextBlob analyzes the text and
+     assigns a sentiment score from -1.0 (very negative) to +1.0
+     (very positive)
+   - This score is stored alongside the review and used to show
+     an overall sentiment indicator on movie pages
+
+6. RECENTLY VIEWED
+   - Every time you open a movie's detail page, the backend records
+     it in a "recently_viewed" table with a timestamp
+   - The Home page fetches your last 10 viewed movies and shows them
+     in the "Continue Watching" row
+
+7. DARK / LIGHT MODE
+   - Stored in localStorage via Zustand
+   - A small inline script in index.html reads the preference and
+     applies the "dark" CSS class BEFORE React loads, so there is
+     never a flash of the wrong theme
+   - Light mode is implemented via CSS overrides using html:not(.dark)
+     selectors in index.css
+
+
+----------------------------------------------------------------
+DATABASE SCHEMA (simplified)
+----------------------------------------------------------------
+
+  users          — id, username, email, hashed_password,
+                   genre_preferences, onboarding_complete, is_admin
+
+  movies         — id, tmdb_id, title, overview, genres, cast,
+                   director, keywords, rating, poster_url, etc.
+
+  ratings        — user_id → users, movie_id → movies, rating (0-5)
+
+  watchlist      — user_id → users, movie_id → movies
+
+  favorites      — user_id → users, movie_id → movies
+
+  reviews        — user_id → users, movie_id → movies, content,
+                   sentiment_score
+
+  recently_viewed — user_id → users, movie_id → movies, viewed_at
+
+
+----------------------------------------------------------------
+HOW THE DEPLOYMENT PIPELINE WORKS
+----------------------------------------------------------------
+
+1. Code is pushed to GitHub (main branch)
+2. Vercel detects the push → automatically builds the React app
+   (runs: npm run build) → deploys the static files to its CDN
+3. Render detects the push → pulls the new code → builds the
+   Docker image → starts a new container
+4. On container startup, seed.py runs to ensure all 106 movies
+   exist in the Neon database (it's idempotent — skips duplicates)
+5. FastAPI server starts and listens for requests
+
+Environment variables (API keys, database URL, secret key) are
+stored securely in Render and Vercel dashboards — never in code.
+
+
+----------------------------------------------------------------
+FOLDER STRUCTURE
+----------------------------------------------------------------
+
+recommendation/
+  backend/
+    app/
+      routers/      — API route handlers (auth, movies, users,
+                       recommendations, chat)
+      models/       — SQLAlchemy database models
+      ml/           — recommendation engine (content, collab, hybrid)
+      utils/        — JWT helpers, password hashing
+      main.py       — FastAPI app setup, CORS, startup
+      config.py     — environment variable loading
+      database.py   — database connection setup
+    data/
+      seed.py       — pre-loads 106 movies into the database
+    Dockerfile      — container definition for Render
+    requirements.txt
+
+  frontend/
+    src/
+      pages/        — Login, Register, Home, MovieDetail,
+                       Recommendations, Profile, Watchlist, Admin
+      components/   — Navbar, MovieCard, ChatBot, ProtectedRoute
+      store/        — Zustand stores (auth, theme)
+      api/          — Axios client with auth interceptors
+      hooks/        — useDebounce, useInfiniteScroll
+    index.html
+    tailwind.config.js
+
+
+================================================================

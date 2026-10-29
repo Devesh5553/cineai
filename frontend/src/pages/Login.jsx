@@ -18,7 +18,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const user = await login(email, password)
+      const user = await login(email.trim(), password)
       navigate(user.onboarding_complete ? '/home' : '/onboarding')
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid email or password')
@@ -66,15 +66,15 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email or Username</label>
               <input
-                type="email"
+                type="text"
                 className="input"
-                placeholder="you@example.com"
+                placeholder="you@example.com or username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
             <div>
